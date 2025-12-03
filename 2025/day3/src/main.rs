@@ -4,15 +4,9 @@ use std::io::{BufRead, BufReader};
 fn get_num(bank: &str, num_to_get: u32, min_idx: usize, max_idx: usize) -> Option<usize> {
     // Gets the index of the number at least min_idx into bank, at most max_idx, if present
     let char = std::char::from_digit(num_to_get, 10).unwrap();
-    let mut char_pos = bank
-        .chars()
+    bank.chars()
         .enumerate()
-        .filter(|(idx, c)| (*c == char) & (*idx >= min_idx) & (*idx <= max_idx));
-    if let Some((idx, _)) = char_pos.next() {
-        return Some(idx);
-    } else {
-        None
-    }
+        .position(|(idx, c)| (c == char) & (idx >= min_idx) & (idx <= max_idx))
 }
 
 fn max_joltage_helper(bank: &str, num_digits_required: u32, min_idx: usize) -> Option<i128> {
