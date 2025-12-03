@@ -14,13 +14,13 @@ fn max_joltage_helper(bank: &str, num_digits_required: u32, min_idx: usize) -> O
         return Some(0);
     }
     for i in (0..=9).rev() {
-        let largest_num = get_num(
+        let largest_num_idx = get_num(
             bank,
             i,
             min_idx,
             bank.len() - (num_digits_required as usize),
         );
-        match largest_num {
+        match largest_num_idx {
             None => continue,
             Some(idx) => match max_joltage_helper(bank, num_digits_required - 1, idx + 1) {
                 None => continue,
