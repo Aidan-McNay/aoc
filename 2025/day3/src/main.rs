@@ -1,9 +1,8 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-fn get_largest_num(bank: &str, num_to_get: u32, min_idx: usize, max_idx: usize) -> Option<usize> {
-    // Gets the largest number and index at least min_idx into bank, at most max_idx
-    //  - If ties, prefer closer to the beginning
+fn get_num(bank: &str, num_to_get: u32, min_idx: usize, max_idx: usize) -> Option<usize> {
+    // Gets the index of the number at least min_idx into bank, at most max_idx, if present
     let char = std::char::from_digit(num_to_get, 10).unwrap();
     let mut char_pos = bank
         .chars()
@@ -21,7 +20,7 @@ fn max_joltage_helper(bank: &str, num_digits_required: u32, min_idx: usize) -> O
         return Some(0);
     }
     for i in (0..=9).rev() {
-        let largest_num = get_largest_num(
+        let largest_num = get_num(
             bank,
             i,
             min_idx,
