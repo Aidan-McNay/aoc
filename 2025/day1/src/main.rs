@@ -1,92 +1,88 @@
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use utils::FileReader;
 
-fn part1() {
-    let src_file = std::env::args().nth(1).expect("Usage: <binary> input.txt");
-    let file = File::open(src_file).unwrap();
-    let reader = BufReader::new(file);
-    let mut curr_num = 50;
-    let mut pointed_at_zero = 0;
-    for line_result in reader.lines() {
-        let line = line_result.unwrap();
-        let (direction, amount) = line
-            .char_indices()
-            .nth(1)
-            .map(|(idx, _)| line.split_at(idx))
-            .unwrap();
-        let amount_num: i32 = amount.parse().unwrap();
-        match direction {
-            "L" => {
-                curr_num -= amount_num;
-            }
-            "R" => {
-                curr_num += amount_num;
-            }
-            _ => (),
-        };
-        while curr_num < 0 {
-            curr_num += 100;
-        }
-        while curr_num >= 100 {
-            curr_num -= 100
-        }
-        if curr_num == 0 {
-            pointed_at_zero += 1;
-        }
-    }
-    println! {"[Part1] Ended at zero {} times!", pointed_at_zero}
+struct Dial {
+    loc: i32,
+    pub num_zero_stops: i32,
+    pub num_zero_clicks: i32,
 }
 
-fn part2() {
-    let src_file = std::env::args().nth(1).expect("no source file given");
-    let file = File::open(src_file).unwrap();
-    let reader = BufReader::new(file);
-    let mut curr_num = 50;
-    let mut prev_num: i32;
-    let mut clicked_at_zero = 0;
-    for line_result in reader.lines() {
-        let line = line_result.unwrap();
-        let (direction, amount) = line
-            .char_indices()
-            .nth(1)
-            .map(|(idx, _)| line.split_at(idx))
-            .unwrap();
-        let amount_num: i32 = amount.parse().unwrap();
-        prev_num = curr_num;
-        match direction {
-            "L" => {
-                curr_num -= amount_num;
-            }
-            "R" => {
-                curr_num += amount_num;
-            }
-            _ => (),
-        };
-        while curr_num < 0 {
-            // Don't count as clicking over if we started there
-            if prev_num != 0 {
-                clicked_at_zero += 1;
-            } else {
-                // Count subsequent clicks over
-                prev_num = 1;
-            }
-            curr_num += 100;
-        }
-        while curr_num >= 100 {
-            // Exactly as 100 should count as ending there, not clicking over
-            if curr_num != 100 {
-                clicked_at_zero += 1;
-            }
-            curr_num -= 100;
-        }
-        if curr_num == 0 {
-            clicked_at_zero += 1;
+impl Default for Dial {
+    fn default() -> Self {
+        Dial {
+            loc: 50,
+            num_zero_stops: 0,
+            num_zero_clicks: 0,
         }
     }
-    println! {"[Part2] Clicked at zero {} times!", clicked_at_zero}
+}
+
+enum Rotation {
+    Left(i32),
+    Right(i32),
+}
+
+impl Dial {
+    pub fn turn(&mut self, rotation: Rotation) {
+        let prev_loc = self.loc;
+        match rotation {
+            Rotation::Left(amt) => {
+                self.loc -= amt;
+            }
+            Rotation::Right(amt) => {
+                self.loc += amt;
+            }
+        }
+        match self.loc {
+            _ if self.loc < 0 => {
+                if prev_loc == 0 {
+                    self.num_zero_clicks -= 1;
+                };
+                loop {
+                    self.loc += 100;
+                    self.num_zero_clicks += 1;
+                    if self.loc >= 0 {
+                        break;
+                    }
+                }
+            }
+            _ if self.loc >= 100 => {
+                loop {
+                    self.loc -= 100;
+                    self.num_zero_clicks += 1;
+                    if self.loc < 100 {
+                        break;
+                    }
+                }
+                if self.loc == 0 {
+                    self.num_zero_clicks -= 1;
+                }
+            }
+            _ => (),
+        }
+        if self.loc == 0 {
+            self.num_zero_stops += 1;
+            self.num_zero_clicks += 1;
+        }
+    }
+}
+
+fn parse(line: &str) -> Option<Rotation> {
+    match &line[0..1] {
+        "L" => Some(Rotation::Left(line[1..].parse().unwrap())),
+        "R" => Some(Rotation::Right(line[1..].parse().unwrap())),
+        _ => None,
+    }
 }
 
 fn main() {
-    part1();
-    part2();
+    let file_name = std::env::args().nth(1).expect("Usage: <binary> input.txt");
+    let finished_dial = FileReader::new(file_name.as_str())
+        .map(|line_result| line_result.unwrap())
+        .filter_map(|line| parse(line.as_str()))
+        .fold(Dial::default(), |mut dial, rot| {
+            dial.turn(rot);
+            dial
+        });
+    println! {"[Part1] Ended at zero {} times!", finished_dial.num_zero_stops}
+    println! {"[Part2] Clicked at zero {} times!", finished_dial.num_zero_clicks}
 }
