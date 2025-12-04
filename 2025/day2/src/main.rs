@@ -6,7 +6,7 @@ struct RangeIterator {
     range_str_iter: IntoIter<String>,
 }
 
-impl<'a> RangeIterator {
+impl RangeIterator {
     fn new(range_str: String) -> Self {
         Self {
             range_str_iter: range_str
