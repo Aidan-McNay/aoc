@@ -1,5 +1,8 @@
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use utils::FileReader;
+
+trait MaxJoltage {
+    fn get_max_joltage(&self, num_digits: u32) -> u64;
+}
 
 fn get_num(bank: &str, num_to_get: u32, min_idx: usize, max_idx: usize) -> Option<usize> {
     // Gets the index of the number at least min_idx into bank, at most max_idx, if present
@@ -9,7 +12,7 @@ fn get_num(bank: &str, num_to_get: u32, min_idx: usize, max_idx: usize) -> Optio
         .position(|(idx, c)| (c == char) & (idx >= min_idx) & (idx <= max_idx))
 }
 
-fn max_joltage_helper(bank: &str, num_digits_required: u32, min_idx: usize) -> Option<i128> {
+fn get_max_joltage_helper(bank: &str, num_digits_required: u32, min_idx: usize) -> Option<u64> {
     if num_digits_required == 0 {
         return Some(0);
     }
@@ -22,11 +25,11 @@ fn max_joltage_helper(bank: &str, num_digits_required: u32, min_idx: usize) -> O
         );
         match largest_num_idx {
             None => continue,
-            Some(idx) => match max_joltage_helper(bank, num_digits_required - 1, idx + 1) {
+            Some(idx) => match get_max_joltage_helper(bank, num_digits_required - 1, idx + 1) {
                 None => continue,
                 Some(lesser_num) => {
-                    let coeff: i128 = 10_i128.pow(num_digits_required - 1);
-                    return Some(((i as i128) * coeff) + lesser_num);
+                    let coeff: u64 = 10_u64.pow(num_digits_required - 1);
+                    return Some(((i as u64) * coeff) + lesser_num);
                 }
             },
         }
@@ -34,45 +37,22 @@ fn max_joltage_helper(bank: &str, num_digits_required: u32, min_idx: usize) -> O
     None
 }
 
-fn max_joltage_part1(bank: &str) -> i128 {
-    match max_joltage_helper(bank, 2, 0) {
-        None => panic!("Oops!"),
-        Some(num) => num,
+impl MaxJoltage for &str {
+    fn get_max_joltage(&self, num_digits: u32) -> u64 {
+        get_max_joltage_helper(&self, num_digits, 0).unwrap()
     }
-}
-
-fn max_joltage_part2(bank: &str) -> i128 {
-    match max_joltage_helper(bank, 12, 0) {
-        None => panic!("Oops!"),
-        Some(num) => num,
-    }
-}
-
-fn part1() {
-    let src_file = std::env::args().nth(1).expect("Usage: <binary> input.txt");
-    let file = File::open(src_file).unwrap();
-    let reader = BufReader::new(file);
-    let mut overall_sum = 0;
-    for line_result in reader.lines() {
-        let line = line_result.unwrap();
-        overall_sum += max_joltage_part1(&line);
-    }
-    println!("[Part1] Max joltage of all banks is {}", overall_sum);
-}
-
-fn part2() {
-    let src_file = std::env::args().nth(1).expect("Usage: <binary> input.txt");
-    let file = File::open(src_file).unwrap();
-    let reader = BufReader::new(file);
-    let mut overall_sum = 0;
-    for line_result in reader.lines() {
-        let line = line_result.unwrap();
-        overall_sum += max_joltage_part2(&line);
-    }
-    println!("[Part2] Max joltage of all banks is {}", overall_sum);
 }
 
 fn main() {
-    part1();
-    part2();
+    let file_name = std::env::args().nth(1).expect("Usage: <binary> input.txt");
+    let (part1_joltage, part2_joltage) = FileReader::new(file_name.as_str())
+        .map(|line| {
+            let line_str = line.as_str();
+            (line_str.get_max_joltage(2), line_str.get_max_joltage(12))
+        })
+        .fold((0, 0), |acc, element| {
+            (acc.0 + element.0, acc.1 + element.1)
+        });
+    println!("[Part1] Max joltage of all banks is {}", part1_joltage);
+    println!("[Part2] Max joltage of all banks is {}", part2_joltage);
 }

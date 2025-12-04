@@ -77,7 +77,6 @@ fn parse(line: &str) -> Option<Rotation> {
 fn main() {
     let file_name = std::env::args().nth(1).expect("Usage: <binary> input.txt");
     let finished_dial = FileReader::new(file_name.as_str())
-        .map(|line_result| line_result.unwrap())
         .filter_map(|line| parse(line.as_str()))
         .fold(Dial::default(), |mut dial, rot| {
             dial.turn(rot);

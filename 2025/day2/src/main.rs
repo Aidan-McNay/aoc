@@ -1,89 +1,103 @@
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::ops::Range;
+use std::vec::IntoIter;
+use utils::FileReader;
 
-fn is_invalid_part1(id: i128) -> bool {
-    let id_string = id.to_string();
-    let id_string_len = id_string.len();
-    match id_string_len % 2 {
-        0 => {
-            let half_len = id_string_len / 2;
-            &id_string[0..half_len] == &id_string[half_len..id_string_len]
-        }
-        1 => false,
-        _ => {
-            panic!("Huh?!?!");
+struct RangeIterator {
+    range_str_iter: IntoIter<String>,
+}
+
+impl<'a> RangeIterator {
+    fn new(range_str: String) -> Self {
+        Self {
+            range_str_iter: range_str
+                .split(",")
+                .map(|s| s.to_owned())
+                .collect::<Vec<String>>()
+                .into_iter(),
         }
     }
 }
 
-fn get_invalid_sum_for_range(start: i128, end: i128, invalid_checker: fn(i128) -> bool) -> i128 {
-    let mut sum = 0;
-    for value in start..=end {
-        if invalid_checker(value) {
-            sum += value;
+impl<'a> Iterator for RangeIterator {
+    type Item = Range<u64>;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.range_str_iter.next() {
+            None => None,
+            Some(range_str) => {
+                let components: Vec<&str> = range_str.split("-").collect();
+                let start = components[0]
+                    .parse::<u64>()
+                    .expect("Failed to parse string to i128");
+                let end = components[1]
+                    .parse::<u64>()
+                    .expect("Failed to parse string to i128");
+                Some(Range {
+                    start: start,
+                    end: end + 1,
+                })
+            }
         }
     }
-    return sum;
 }
 
-fn part1() {
-    let src_file = std::env::args().nth(1).expect("Usage: <binary> input.txt");
-    let file = File::open(src_file).unwrap();
-    let reader = BufReader::new(file);
-    let mut overall_sum = 0;
-    for line_result in reader.lines() {
-        let line = line_result.unwrap();
-        let ranges: Vec<&str> = line.split(",").collect();
-        for range in ranges {
-            let components: Vec<&str> = range.split("-").collect();
-            let start = components[0]
-                .parse::<i128>()
-                .expect("Failed to parse string to i128");
-            let end = components[1]
-                .parse::<i128>()
-                .expect("Failed to parse string to i128");
-            overall_sum += get_invalid_sum_for_range(start, end, is_invalid_part1);
-        }
-    }
-    println!("[Part1] Overall sum from all ranges is {}", overall_sum)
+trait MaybeInvalid {
+    type InvalidConfig;
+    fn is_invalid(&self, config: Self::InvalidConfig) -> bool;
 }
 
-fn is_invalid_part2(id: i128) -> bool {
-    let id_string = id.to_string();
-    let id_string_len = id_string.len();
-    for i in 1..=id_string_len / 2 {
-        let substr = &id_string[0..i];
-        let repetition_amount = id_string_len / i;
-        if substr.repeat(repetition_amount) == id_string {
-            return true;
+impl MaybeInvalid for u64 {
+    type InvalidConfig = fn(usize) -> Range<usize>;
+    fn is_invalid(&self, config: Self::InvalidConfig) -> bool {
+        let id_string = self.to_string();
+        let id_string_len = id_string.len();
+        for i in config(id_string_len) {
+            let substr = &id_string[0..i];
+            let repetition_amount = id_string_len / i;
+            if substr.repeat(repetition_amount) == id_string {
+                return true;
+            }
         }
+        return false;
     }
-    return false;
 }
 
-fn part2() {
-    let src_file = std::env::args().nth(1).expect("Usage: <binary> input.txt");
-    let file = File::open(src_file).unwrap();
-    let reader = BufReader::new(file);
-    let mut overall_sum = 0;
-    for line_result in reader.lines() {
-        let line = line_result.unwrap();
-        let ranges: Vec<&str> = line.split(",").collect();
-        for range in ranges {
-            let components: Vec<&str> = range.split("-").collect();
-            let start = components[0]
-                .parse::<i128>()
-                .expect("Failed to parse string to i128");
-            let end = components[1]
-                .parse::<i128>()
-                .expect("Failed to parse string to i128");
-            overall_sum += get_invalid_sum_for_range(start, end, is_invalid_part2);
-        }
+fn part1_invalid_repetition_range(id_str_len: usize) -> Range<usize> {
+    Range {
+        start: id_str_len / 2,
+        end: (id_str_len / 2) + 1,
     }
-    println!("[Part2] Overall sum from all ranges is {}", overall_sum)
+}
+
+fn part2_invalid_repetition_range(id_str_len: usize) -> Range<usize> {
+    Range {
+        start: 1,
+        end: (id_str_len / 2) + 1,
+    }
+}
+
+fn invalid_sum(range: Range<u64>, invalid_config: fn(usize) -> Range<usize>) -> u64 {
+    range.fold(0, |acc, e| {
+        if e.is_invalid(invalid_config) {
+            acc + e
+        } else {
+            acc
+        }
+    })
 }
 
 fn main() {
-    part1();
-    part2();
+    let file_name = std::env::args().nth(1).expect("Usage: <binary> input.txt");
+    let (part1_sum, part2_sum) = FileReader::new(file_name.as_str())
+        .flat_map(|line| RangeIterator::new(line))
+        .map(|range| {
+            (
+                invalid_sum(range.clone(), part1_invalid_repetition_range),
+                invalid_sum(range, part2_invalid_repetition_range),
+            )
+        })
+        .fold((0, 0), |acc, element| {
+            (acc.0 + element.0, acc.1 + element.1)
+        });
+    println!("[Part1] Overall sum from all ranges is {}", part1_sum);
+    println!("[Part2] Overall sum from all ranges is {}", part2_sum);
 }
