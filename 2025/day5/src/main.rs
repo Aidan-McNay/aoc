@@ -1,4 +1,4 @@
-use std::cmp::{max, min};
+use std::cmp::max;
 use std::ops::RangeInclusive;
 use utils::FileReader;
 
@@ -44,7 +44,7 @@ impl FreshRanges {
                     ));
                 };
                 RangeInclusive::new(
-                    min(prev_range_tuple.0, next_range_tuple.0),
+                    prev_range_tuple.0,
                     max(prev_range_tuple.1, next_range_tuple.1),
                 )
             });
