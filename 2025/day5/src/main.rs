@@ -20,23 +20,23 @@ impl FreshRanges {
     fn is_fresh(&self, id: IngredientID) -> bool {
         self.ranges.iter().any(|range| range.contains(&id))
     }
-    fn get_total_fresh(&self) -> u64 {
-        let mut ranges = self.ranges.clone();
+    fn get_total_fresh(&mut self) -> u64 {
         let mut gaps: Vec<RangeInclusive<IngredientID>> = vec![];
-        ranges.sort_by(|r1, r2| {
+        self.ranges.sort_by(|r1, r2| {
             if r1.start() != r2.start() {
                 r1.start().cmp(r2.start())
             } else {
                 r1.end().cmp(r2.end())
             }
         });
-        let first_range = ranges.first().unwrap().clone();
-        let total_range = ranges
-            .into_iter()
+        let first_range = self.ranges.first().unwrap().clone();
+        let total_range = self
+            .ranges
+            .iter()
             .fold(first_range, |prev_range, next_range| {
                 assert!(next_range.end() >= next_range.start());
                 let prev_range_tuple = prev_range.into_inner();
-                let next_range_tuple = next_range.into_inner();
+                let next_range_tuple = next_range.clone().into_inner();
                 if prev_range_tuple.1 < (next_range_tuple.0 - 1) {
                     gaps.push(RangeInclusive::new(
                         prev_range_tuple.1 + 1,
@@ -76,16 +76,10 @@ fn parse_database(mut str_iter: impl Iterator<Item = String>) -> (FreshRanges, V
 
 fn main() {
     let file_name = std::env::args().nth(1).expect("Usage: <binary> input.txt");
-    let (fresh_ranges, ingredient_ids) = parse_database(FileReader::new(file_name.as_str()));
+    let (mut fresh_ranges, ingredient_ids) = parse_database(FileReader::new(file_name.as_str()));
     let num_fresh = ingredient_ids
         .into_iter()
-        .filter_map(|id| {
-            if fresh_ranges.is_fresh(id) {
-                Some(id)
-            } else {
-                None
-            }
-        })
+        .filter(|id| fresh_ranges.is_fresh(*id))
         .count();
     println!("[Part1] {} ingredients are fresh", num_fresh);
     println!(
