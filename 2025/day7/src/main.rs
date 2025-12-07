@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use utils::FileReader;
 
 fn update_tachyons(tachyons: &mut HashMap<usize, usize>, loc: usize, count: usize) {
@@ -13,7 +13,7 @@ fn process_manifold_string(
     tachyons: HashMap<usize, usize>,
     split_count: &mut usize,
 ) -> HashMap<usize, usize> {
-    let splitter_locs: Vec<usize> = array
+    let splitter_locs: HashSet<usize> = array
         .chars()
         .enumerate()
         .filter_map(|(idx, c)| if c == '^' { Some(idx) } else { None })
