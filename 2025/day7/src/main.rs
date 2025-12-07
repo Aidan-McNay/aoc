@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use utils::FileReader;
 
-fn progress(
+fn process_manifold_string(
     array: String,
     tachyons: HashMap<usize, usize>,
     split_count: &mut usize,
@@ -48,7 +48,7 @@ fn main() {
     )]);
     let mut split_count: usize = 0;
     let final_state = lines.fold(tachyons, |tachyons, line| {
-        progress(line, tachyons, &mut split_count)
+        process_manifold_string(line, tachyons, &mut split_count)
     });
     println!("[Part1] Tachyons split {} times", split_count);
     let timelines = final_state
