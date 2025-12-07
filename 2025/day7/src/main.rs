@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use utils::FileReader;
 
-fn update_tachyons(tachyons: &mut HashMap<usize, usize>, loc: usize, count: usize) {
+fn update_tachyons(tachyons: &mut HashMap<usize, u64>, loc: usize, count: u64) {
     tachyons
         .entry(loc)
         .and_modify(|prev_count| *prev_count += count)
@@ -10,15 +10,15 @@ fn update_tachyons(tachyons: &mut HashMap<usize, usize>, loc: usize, count: usiz
 
 fn process_manifold_string(
     array: String,
-    tachyons: HashMap<usize, usize>,
+    tachyons: HashMap<usize, u64>,
     split_count: &mut usize,
-) -> HashMap<usize, usize> {
+) -> HashMap<usize, u64> {
     let splitter_locs: HashSet<usize> = array
         .chars()
         .enumerate()
         .filter_map(|(idx, c)| if c == '^' { Some(idx) } else { None })
         .collect();
-    let mut new_tachyons: HashMap<usize, usize> = HashMap::new();
+    let mut new_tachyons: HashMap<usize, u64> = HashMap::new();
     for (loc, count) in tachyons {
         if splitter_locs.contains(&loc) {
             *split_count += 1;
@@ -35,7 +35,7 @@ fn main() {
     let file_name = std::env::args().nth(1).expect("Usage: <binary> input.txt");
     let mut lines = FileReader::new(file_name.as_str()).into_iter();
     // maps location -> count
-    let tachyons: HashMap<usize, usize> = HashMap::from([(
+    let tachyons: HashMap<usize, u64> = HashMap::from([(
         lines
             .next()
             .unwrap()
