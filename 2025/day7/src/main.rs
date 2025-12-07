@@ -1,6 +1,13 @@
 use std::collections::HashMap;
 use utils::FileReader;
 
+fn update_tachyons(tachyons: &mut HashMap<usize, usize>, loc: usize, count: usize) {
+    tachyons
+        .entry(loc)
+        .and_modify(|prev_count| *prev_count += count)
+        .or_insert(count);
+}
+
 fn process_manifold_string(
     array: String,
     tachyons: HashMap<usize, usize>,
@@ -15,19 +22,10 @@ fn process_manifold_string(
     for (loc, count) in tachyons {
         if splitter_locs.contains(&loc) {
             *split_count += 1;
-            new_tachyons
-                .entry(loc + 1)
-                .and_modify(|prev_count| *prev_count += count)
-                .or_insert(count);
-            new_tachyons
-                .entry(loc - 1)
-                .and_modify(|prev_count| *prev_count += count)
-                .or_insert(count);
+            update_tachyons(&mut new_tachyons, loc + 1, count);
+            update_tachyons(&mut new_tachyons, loc - 1, count);
         } else {
-            new_tachyons
-                .entry(loc)
-                .and_modify(|prev_count| *prev_count += count)
-                .or_insert(count);
+            update_tachyons(&mut new_tachyons, loc, count);
         }
     }
     new_tachyons
