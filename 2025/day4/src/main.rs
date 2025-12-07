@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use utils::FileReader;
 
 struct Grid {
@@ -28,9 +27,17 @@ impl Grid {
     }
 
     fn can_access(&self, x: i32, y: i32) -> bool {
-        let x_coords = x - 1..=x + 1;
-        let y_coords = y - 1..=y + 1;
-        let coords_to_check = x_coords.cartesian_product(y_coords);
+        let coords_to_check = vec![
+            (x - 1, y - 1),
+            (x, y - 1),
+            (x + 1, y - 1),
+            (x - 1, y),
+            (x + 1, y),
+            (x - 1, y + 1),
+            (x, y + 1),
+            (x + 1, y + 1),
+        ]
+        .into_iter();
         let map = coords_to_check
             .map(|(curr_x, curr_y)| {
                 if curr_x < 0 {
