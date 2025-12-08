@@ -91,10 +91,10 @@ fn more_than_one_circuit(circuit_sizes: &HashMap<usize, usize>) -> bool {
 fn main() {
     let file_name = std::env::args()
         .nth(1)
-        .expect("Usage: <binary> input.txt num_connections");
+        .expect("Usage: <binary> input.txt <num_connections, default = 1000>");
     let num_connections: usize = std::env::args()
         .nth(2)
-        .expect("Usage: <binary> input.txt num_connections")
+        .unwrap_or("1000".to_string())
         .parse()
         .unwrap();
     let boxes: Vec<JunctionBox> = FileReader::new(file_name.as_str())
