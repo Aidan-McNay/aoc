@@ -3,45 +3,57 @@ use utils::FileReader;
 
 // (x, y, z, id)
 type JunctionBox = (usize, usize, usize, usize);
-type Circuit = usize;
 
 fn dist_squared(j1: &JunctionBox, j2: &JunctionBox) -> usize {
     j1.0.abs_diff(j2.0).pow(2) + j1.1.abs_diff(j2.1).pow(2) + j1.2.abs_diff(j2.2).pow(2)
 }
 
-fn connect_closest(
-    boxes: &mut Vec<(Circuit, JunctionBox, Vec<usize>)>,
-) -> (JunctionBox, JunctionBox) {
-    let mut min_j1 = boxes.first().unwrap();
-    let mut min_j2 = boxes.iter().find(|jbox| jbox.0 != min_j1.0).unwrap();
-    let mut min_dist = dist_squared(&min_j1.1, &min_j2.1);
+fn get_sorted_connections(boxes: Vec<JunctionBox>) -> Vec<(usize, usize)> {
+    let mut sorted_connections: Vec<(JunctionBox, JunctionBox)> = vec![];
+    sorted_connections.reserve((boxes.len() * boxes.len() - 1) / 2);
     for (idx, j1) in boxes.iter().enumerate() {
         for j2 in boxes.iter().skip(idx + 1) {
-            if j1.2.contains(&j2.1.3) | j2.2.contains(&j1.1.3) {
-                continue;
-            }
-            let box_dist = dist_squared(&j1.1, &j2.1);
-            if box_dist < min_dist {
-                min_dist = box_dist;
-                min_j1 = j1;
-                min_j2 = j2;
-            }
+            sorted_connections.push((j1.clone(), j2.clone()));
         }
     }
-    let circuit_to_join = min_j1.0;
-    let circuit_to_join_from = min_j2.0;
-    let id_to_connect = min_j2.1.3;
-    let id_to_connect_to = min_j1.1.3;
-    let result = (min_j1.1.clone(), min_j2.1.clone());
-    for jbox in boxes.iter_mut() {
-        if jbox.0 == circuit_to_join_from {
-            jbox.0 = circuit_to_join;
-        }
-        if jbox.1.3 == id_to_connect_to {
-            jbox.2.push(id_to_connect);
-        }
-    }
+    sorted_connections.sort_by(|pair_1, pair_2| {
+        dist_squared(&pair_1.0, &pair_1.1).cmp(&dist_squared(&pair_2.0, &pair_2.1))
+    });
+    let result = sorted_connections
+        .into_iter()
+        .map(|pair| (pair.0.3, pair.1.3))
+        .collect();
     result
+}
+
+fn make_connection(
+    connections: &mut impl Iterator<Item = (usize, usize)>,
+    id_to_circuit_mappings: &mut HashMap<usize, usize>,
+    circuit_sizes: &mut HashMap<usize, usize>,
+) -> (usize, usize) {
+    let (id1, id2) = connections.next().unwrap();
+    let old_circuit = id_to_circuit_mappings.get(&id2).unwrap().clone();
+    let new_circuit = id_to_circuit_mappings.get(&id1).unwrap().clone();
+    let old_circuit_count = circuit_sizes.get(&old_circuit).unwrap().clone();
+    if new_circuit != old_circuit {
+        circuit_sizes
+            .entry(new_circuit)
+            .and_modify(|count| *count += old_circuit_count);
+        circuit_sizes
+            .entry(old_circuit)
+            .and_modify(|count| *count = 0);
+        *id_to_circuit_mappings = id_to_circuit_mappings
+            .into_iter()
+            .map(|(id, circuit)| {
+                if *circuit == old_circuit {
+                    (*id, new_circuit)
+                } else {
+                    (*id, *circuit)
+                }
+            })
+            .collect()
+    }
+    (id1, id2)
 }
 
 fn parse_junction_box(coords: String, id: usize) -> JunctionBox {
@@ -52,35 +64,24 @@ fn parse_junction_box(coords: String, id: usize) -> JunctionBox {
     (x, y, z, id)
 }
 
-fn three_largest_product(boxes: &Vec<(Circuit, JunctionBox, Vec<usize>)>) -> usize {
-    let mut sizes: HashMap<Circuit, usize> = HashMap::new();
-    for (circuit, _, _) in boxes.iter() {
-        sizes.entry(*circuit).and_modify(|s| *s += 1).or_insert(1);
-    }
-    let (mut largest, mut second_largest, mut third_largest) = (0, 0, 0);
-    for (_, size) in sizes.iter() {
-        if *size > third_largest {
-            third_largest = *size;
-        }
-        if third_largest > second_largest {
-            let tmp = second_largest;
-            second_largest = third_largest;
-            third_largest = tmp;
-        }
-        if second_largest > largest {
-            let tmp = largest;
-            largest = second_largest;
-            second_largest = tmp;
-        }
-    }
-    largest * second_largest * third_largest
+fn three_largest_product(circuit_sizes: HashMap<usize, usize>) -> usize {
+    let mut sorted_sizes = circuit_sizes.into_iter().collect::<Vec<(usize, usize)>>();
+    sorted_sizes.sort_by(|(_, size1), (_, size2)| size2.cmp(size1));
+    sorted_sizes
+        .into_iter()
+        .take(3)
+        .fold(1, |acc, element| acc * element.1)
 }
 
-fn more_than_one_circuit(boxes: &Vec<(Circuit, JunctionBox, Vec<usize>)>) -> bool {
-    let mut box_iter = boxes.iter();
-    let circuit = box_iter.next().unwrap().0;
-    for (new_circuit, _, _) in box_iter {
-        if *new_circuit != circuit {
+fn more_than_one_circuit(circuit_sizes: &HashMap<usize, usize>) -> bool {
+    let mut circuit_size = 0;
+    for (_, size) in circuit_sizes.iter() {
+        if *size == 0 {
+            continue;
+        }
+        if circuit_size == 0 {
+            circuit_size = *size;
+        } else {
             return true;
         }
     }
@@ -96,20 +97,42 @@ fn main() {
         .expect("Usage: <binary> input.txt num_connections")
         .parse()
         .unwrap();
-    let mut boxes: Vec<(Circuit, JunctionBox, Vec<usize>)> = FileReader::new(file_name.as_str())
+    let boxes: Vec<JunctionBox> = FileReader::new(file_name.as_str())
         .into_iter()
         .enumerate()
-        .map(|(idx, jbox_str)| (idx, parse_junction_box(jbox_str, idx), vec![idx]))
+        .map(|(idx, jbox_str)| parse_junction_box(jbox_str, idx))
         .collect();
-    let mut connected_boxes: (JunctionBox, JunctionBox) = ((0, 0, 0, 0), (0, 0, 0, 0));
+    let mut id_to_circuit_mappings: HashMap<usize, usize> =
+        (0..boxes.len()).map(|id| (id, id)).collect();
+    let mut circuit_sizes: HashMap<usize, usize> = (0..boxes.len()).map(|id| (id, 1)).collect();
+    let mut connections = get_sorted_connections(boxes.clone()).into_iter();
+
+    let mut connected_ids: (usize, usize) = (0, 0);
     for _ in 0..num_connections {
-        connected_boxes = connect_closest(&mut boxes);
+        connected_ids = make_connection(
+            &mut connections,
+            &mut id_to_circuit_mappings,
+            &mut circuit_sizes,
+        );
     }
-    println! {"[Part1] Product of largest circuits is {}", three_largest_product(&boxes)};
-    while more_than_one_circuit(&boxes) {
-        connected_boxes = connect_closest(&mut boxes);
+    println! {"[Part1] Product of largest circuits is {}", three_largest_product(circuit_sizes.clone())};
+    while more_than_one_circuit(&circuit_sizes) {
+        connected_ids = make_connection(
+            &mut connections,
+            &mut id_to_circuit_mappings,
+            &mut circuit_sizes,
+        );
     }
-    let final_x_product = connected_boxes.0.0 * connected_boxes.1.0;
+    let final_x_product = boxes
+        .iter()
+        .find(|jbox| jbox.3 == connected_ids.0)
+        .unwrap()
+        .0
+        * boxes
+            .iter()
+            .find(|jbox| jbox.3 == connected_ids.1)
+            .unwrap()
+            .0;
     println!(
         "[Part2] Product of final connected boxes' X-coord is {}",
         final_x_product
