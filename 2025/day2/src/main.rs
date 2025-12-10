@@ -63,7 +63,7 @@ impl MaybeInvalid for u64 {
 
 fn part1_invalid_repetition_range(id_str_len: usize) -> Range<usize> {
     Range {
-        start: id_str_len / 2,
+        start: if id_str_len > 2 { id_str_len / 2 } else { 1 },
         end: (id_str_len / 2) + 1,
     }
 }
