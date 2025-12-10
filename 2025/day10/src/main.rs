@@ -116,7 +116,7 @@ fn main() {
         .iter()
         .fold(0, |acc, element| acc + element.num_joltage_presses());
     println!(
-        "[Part2] Toggling all joltages took {} presses",
+        "[Part2] Raising all joltages took {} presses",
         num_joltage_presses
     );
 }
