@@ -17,7 +17,7 @@ impl From<String> for Device {
 }
 
 fn paths(
-    devices: &Vec<Device>,
+    devices: &HashMap<String, Vec<String>>,
     curr_node: &String,
     target_node: &String,
     found_paths: &mut HashMap<(String, String), usize>,
@@ -25,10 +25,10 @@ fn paths(
     if *curr_node == *target_node {
         return 1;
     }
-    let Some(device) = devices.iter().find(|d| d.name == *curr_node) else {
+    let Some(next_devices) = devices.get(curr_node) else {
         return 0;
     };
-    device.connected_to.iter().fold(0, |acc, next_device| {
+    next_devices.iter().fold(0, |acc, next_device| {
         match found_paths.get(&(next_device.clone(), target_node.clone())) {
             Some(num_paths) => acc + num_paths,
             None => {
@@ -43,8 +43,11 @@ fn paths(
 fn main() {
     let file_name = std::env::args().nth(1).expect("Usage: <binary> input.txt");
     let devices = FileReader::new(file_name.as_str())
-        .map(|line| Device::from(line))
-        .collect::<Vec<Device>>();
+        .map(|line| {
+            let device = Device::from(line);
+            (device.name, device.connected_to)
+        })
+        .collect::<HashMap<String, Vec<String>>>();
     let mut found_paths: HashMap<(String, String), usize> = HashMap::new();
     let out_paths = paths(
         &devices,
