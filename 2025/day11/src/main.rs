@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use utils::FileReader;
 
 struct Device {
@@ -15,26 +16,28 @@ impl From<String> for Device {
     }
 }
 
-fn paths_to_out(devices: &Vec<Device>, curr_nodes: Vec<&String>) -> usize {
-    if curr_nodes.is_empty() {
-        return 0;
+fn paths(
+    devices: &Vec<Device>,
+    curr_node: &String,
+    target_node: &String,
+    found_paths: &mut HashMap<(String, String), usize>,
+) -> usize {
+    if *curr_node == *target_node {
+        return 1;
     }
-    let mut new_nodes: Vec<&String> = vec![];
-    let mut found_paths = 0;
-    for node in curr_nodes {
-        for device in devices {
-            if device.name == *node {
-                for next_device in &device.connected_to {
-                    if next_device == "out" {
-                        found_paths += 1;
-                    } else {
-                        new_nodes.push(&next_device)
-                    }
-                }
+    let Some(device) = devices.iter().find(|d| d.name == *curr_node) else {
+        return 0;
+    };
+    device.connected_to.iter().fold(0, |acc, next_device| {
+        match found_paths.get(&(next_device.clone(), target_node.clone())) {
+            Some(num_paths) => acc + num_paths,
+            None => {
+                let num_paths = paths(devices, next_device, target_node, found_paths);
+                found_paths.insert((next_device.clone(), target_node.clone()), num_paths);
+                acc + num_paths
             }
         }
-    }
-    found_paths + paths_to_out(devices, new_nodes)
+    })
 }
 
 fn main() {
@@ -42,6 +45,39 @@ fn main() {
     let devices = FileReader::new(file_name.as_str())
         .map(|line| Device::from(line))
         .collect::<Vec<Device>>();
-    let out_paths = paths_to_out(&devices, vec![&"you".to_owned()]);
+    let mut found_paths: HashMap<(String, String), usize> = HashMap::new();
+    let out_paths = paths(
+        &devices,
+        &"you".to_owned(),
+        &"out".to_owned(),
+        &mut found_paths,
+    );
     println!("[Part1] {} paths from you to out", out_paths);
+    let paths_to_find = vec![
+        vec![
+            "svr".to_owned(),
+            "dac".to_owned(),
+            "fft".to_owned(),
+            "out".to_owned(),
+        ],
+        vec![
+            "svr".to_owned(),
+            "fft".to_owned(),
+            "dac".to_owned(),
+            "out".to_owned(),
+        ],
+    ];
+    let total_paths = paths_to_find.into_iter().fold(0, |acc, path| {
+        let mut num_paths = 1;
+        let first_node = path.first().unwrap().clone();
+        path.into_iter().fold(first_node, |prev_node, node| {
+            num_paths *= paths(&devices, &prev_node, &node, &mut found_paths);
+            node
+        });
+        acc + num_paths
+    });
+    println!(
+        "[Part2] {} paths from svr to out through (dac, fft)",
+        total_paths
+    );
 }
